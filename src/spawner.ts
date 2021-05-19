@@ -3,6 +3,11 @@ interface Store {
   element: HTMLElement;
 }
 
+class SpawnerElement {
+  //  REWRITE SO THAT CREATE returns a spawnerElement
+  // This will allow for the "creation chain" to be exist only after a create is called
+}
+
 export class Spawner {
   _context: HTMLElement;
   _buildList: HTMLElement[];
@@ -13,9 +18,11 @@ export class Spawner {
   constructor() {
     this._context = null;
     this._buildList = [];
-    this._store = [];
+    this._store = []; // change to Ref store
     this._proxyTarget = {};
     this._proxy = new Proxy(this._proxyTarget, {});
+
+    // Implement some sort of state, to allow for conditional rendering
   }
 
   create(options?: Record<string, any>): Spawner {
