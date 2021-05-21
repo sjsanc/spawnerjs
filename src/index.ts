@@ -6,28 +6,21 @@ const store = spawner.store({
   text: "hi!",
 });
 
-// store.text = "lol";
+store.createState({ test: "initialvalue" });
+store.setState({ test: "LOL" });
 
-// console.log(store.text);
-
-// const SpawnerComponent = spawner
-//   .create({ innerText: store.text })
-//   .append({ innerText: "As am I!" });
-
-// PROPS NOT INLINE
-
-// CAN't PUSH THE BUILTCHAIN, ONLY THE DATA BUILDLIST OITHERWISE REFERENCES ARE SET
+const { state } = store;
 
 spawner
-  .create({ innerText: store.text }) // create SpawnChain
+  .create([state.text], { innerText: state.text }) // create SpawnChain
   .append({
     innerText: "I'm a header",
     type: "h1",
     onclick: () => {
-      store.text = "LOL";
+      store.setState({ test: "Gmmm" });
     },
   }) // push to buildList
-  .append({ innerText: "I'm some boring text", type: "p", ref: "pRef" })
+  .append({ innerText: "I'm some boring text", type: "p" })
   .nest(
     spawner
       .create({ innerText: "nested div" })
@@ -36,9 +29,10 @@ spawner
   )
   .renderAt(document.body);
 
-// spawner.register(() => {
-//   console.log("Something about this element changed!");
-// }, "pRef");
+// spawner._reRender();
 
-// spawner.get("pRef").classList.add("cls"); // "Something about..."
-spawner._reRender();
+// store.setState({ test: "Haha" });
+
+// console.log(state.test);
+
+console.log(store);
