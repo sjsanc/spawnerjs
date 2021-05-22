@@ -1,25 +1,59 @@
 ## Spawner
 
-A small helper library that adds reactive and functional features to the native DOM api.
-
-Example:
+A small JS framework for frontend stuff.
 
 ```javascript
-import { Spawner } from "./spawner";
+import { Spawner } from "./classes/spawner";
 
-// const newEl = new U.element("div", { innerText: "LOL" }).append(document.body);
+// Create a Spawner and set the root insertion point
+const spawner = new Spawner(document.body);
 
-const spawner = new Spawner();
-
+// Start chaining elements
 spawner
-  .create({ innerText: "I'm a div" })
-  .append({ innerText: "I'm a header", type: "h1" })
-  .append({ innerText: "I'm some boring text", type: "p", ref: "pRef" })
-  .insertInto(document.body);
+  .create([])
+  .append([], { type: "h1", classList: "bold", innerText: "My life for Aiur" })
+  .append([], { type: "p", innerText: "Jeffrey, we're leaving" });
+  .render();
 
-spawner.register(() => {
-  console.log("Something about this element changed!");
-}, "pRef");
+```
 
-spawner.get("pRef").classList.add("cls"); // "Something about..."
+Nesting
+
+```javascript
+spawner
+  .create([])
+  .append([], { type: "h1", classList: "bold", innerText: "My life for Aiur" })
+  .append([], { type: "p", innerText: "Jeffrey, we're leaving" })
+  .nest(
+    spawner.create([], { type: "ul" }).append(
+      [],
+      ["1", "2", "3"].map((li) => ({ type: "li", innerText: li }))
+    )
+  )
+  .render();
+```
+
+State management
+
+```javascript
+// Create a store
+const initialValue = { name: "Jim Raynor" };
+const store = spawner.store(initialValue);
+
+const { state } = store;
+
+// Insert some state
+store.createState({ killCount: 25 });
+
+// Reference the state by name
+spawner
+  .create([], { type: "p", innerText: state.name })
+  .append([], {
+    type: "button",
+    innerText: "Click Me",
+    onclick: () => {
+      store.setState({ text: "I've been set up!" });
+    },
+  })
+  .render();
 ```
