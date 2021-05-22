@@ -2,6 +2,8 @@
 
 A small JS framework for frontend stuff.
 
+NOTE: not kept up to date -- see index.ts for correct syntax
+
 ```javascript
 import { Spawner } from "./classes/spawner";
 
