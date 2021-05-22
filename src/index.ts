@@ -6,33 +6,30 @@ const store = spawner.store({
   text: "hi!",
 });
 
-store.createState({ test: "initialvalue" });
-store.setState({ test: "LOL" });
+store.createState({ name: "sjsanc" });
 
 const { state } = store;
 
 spawner
-  .create([state.text], { innerText: state.text }) // create SpawnChain
-  .append({
-    innerText: "I'm a header",
-    type: "h1",
+  .create([])
+  .append([], { type: "p", innerText: state.text })
+  .append([], {
+    innerText: "Click me",
+    type: "button",
     onclick: () => {
-      store.setState({ test: "Gmmm" });
+      store.setState({ text: "texty" });
     },
-  }) // push to buildList
-  .append({ innerText: "I'm some boring text", type: "p" })
+  })
+  .append([], { innerText: "I'm some boring text", type: "p" })
   .nest(
-    spawner
-      .create({ innerText: "nested div" })
-      .append({ innerText: "nested div 2" })
-    //   .nest({SpawnerComponent})
+    spawner.create([], { type: "ul" }).append(
+      [],
+      ["List 1", "List 2", "List 3"].map((li) => ({
+        type: "li",
+        innerText: li,
+      }))
+    )
   )
   .renderAt(document.body);
 
-// spawner._reRender();
-
-// store.setState({ test: "Haha" });
-
-// console.log(state.test);
-
-console.log(store);
+console.log(store.snapshot());

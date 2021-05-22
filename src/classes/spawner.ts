@@ -1,39 +1,38 @@
 export class Spawner {
   _spawnerRootContext: HTMLElement;
   protected _spawnerRootBuildList: HTMLElement[];
-
-  _rootEntry: HTMLElement; // document entrypoint
-
-  _refStore: any[]; // array for storing existing referneces
+  _rootEntry: HTMLElement;
+  _refStore: Ref[];
 
   constructor(rootEntry) {
     this._refStore = []; // array for storing existing referneces
-    this._rootEntry = rootEntry;
-    this._spawnerRootContext = null;
-    this._spawnerRootBuildList = [];
+    this._rootEntry = rootEntry; // document entrypoint
+    this._spawnerRootContext = null; // unusued
+    this._spawnerRootBuildList = []; // the flat root SpawnChain
   }
 
+  // SpawnStore intialiser
   store(initialState: Record<string, any>) {
-    return new SpawnerStore(initialState);
+    return new SpawnerStore(this, initialState);
   }
 
-  create(options?: Record<string, any>): SpawnChain;
-  create(props?: any[], options?: Record<string, any>): SpawnChain;
-  create(props?: any[], options?: Record<string, any>): SpawnChain {
-    return new SpawnChain(this, props, (options = {}), this._rootEntry);
+  // SpawnChain initiialiser, wraps the _create internal method
+  create(props: any[]): SpawnChain;
+  create(props: any[], options?: Record<string, any>): SpawnChain;
+  create(props: any[], options?: Record<string, any>): SpawnChain {
+    if (options !== undefined) {
+      return new SpawnChain(this, props, {}, this._rootEntry);
+    } else {
+      return new SpawnChain(this, props, options, this._rootEntry);
+    }
   }
 
-  _saveRef(ref: any) {
+  // Saves the reference between a Store prop and DOM element
+  _saveRef(ref: Ref) {
     this._refStore.push(ref);
   }
 
-  _reRender() {
-    // console.log(this._spawnerRootBuildList);
-    // this._spawnerRootBuildList.forEach((x) => {
-    //   this._rootEntry.append(x);
-    // });
-  }
-
+  // Builds the DOM and returns a root element
   _build(buildList: HTMLElement[], root: HTMLElement) {
     buildList.forEach((x) => {
       root.append(x);
@@ -41,6 +40,7 @@ export class Spawner {
     return root;
   }
 
+  // Brings compiled SpawnChains from their host class into the Spawner buildchain
   _saveToRootBuildList(element: HTMLElement) {
     this._spawnerRootBuildList = [...this._spawnerRootBuildList, element];
   }
@@ -51,33 +51,40 @@ export class SpawnChain {
   _rootContext: HTMLElement;
   _buildList: HTMLElement[];
   _rootInsertion: HTMLElement;
-  _propList: any[];
 
-  constructor(parent, props, options, rootInsertion) {
+  constructor(parent, conditions, attributes, rootInsertion) {
     this._parentSpawner = parent;
-    this._rootContext = this._create(options);
     this._buildList = [];
     this._rootInsertion = rootInsertion;
-    this._propList = props;
+    this._rootContext = this._create(conditions, attributes);
   }
 
   // Create an element
-  private _create(options?: Record<string, any>): HTMLElement {
-    const element: HTMLElement = options["type"]
-      ? document.createElement(options["type"])
+  private _create(
+    conditions?: any[],
+    attributes?: Record<string, any>
+  ): HTMLElement {
+    if (attributes == undefined) attributes = {};
+
+    const element: HTMLElement = attributes["type"]
+      ? document.createElement(attributes["type"])
       : document.createElement("div");
 
-    // Assign attributes from options obj
-    Object.entries(options).map(([key, val]) => {
-      key !== "type" ? (element[key.toString()] = val) : null;
-    });
+    let statefulAttributes: StatefulAttr[] = [];
 
-    // if props are passed in, save them alongside element refernece to Spawner
-    if (this._propList && this._propList.length > 0) {
-      this._parentSpawner._saveRef({
-        stateRef: this._propList,
-        element: element,
-      });
+    for (let [key, val] of Object.entries(attributes)) {
+      if (typeof val == "object") {
+        const stateName = Object.keys(val)[0];
+        statefulAttributes.push({ [key]: stateName }); // { innerText: text }
+        this._parentSpawner._saveRef({
+          stateName: stateName,
+          attr: key,
+          element: element,
+        });
+        element[key] = Object.values(val)[0]; // build element
+      } else {
+        element[key] = val;
+      }
     }
 
     this._parentSpawner._saveToRootBuildList(element);
@@ -85,14 +92,14 @@ export class SpawnChain {
   }
 
   // Appends an element into the SpawnChain buildlist
-  append(options: Record<string, any>): SpawnChain;
-  append(options: Record<string, any>[]): SpawnChain;
-  append(options: Record<string, any>): SpawnChain {
-    if (options.length == undefined) {
-      this._buildList.push(this._create(options));
+  append(propList?: any[], attributes?: Record<string, any>): SpawnChain;
+  append(propList?: any[], attributes?: Record<string, any>[]): SpawnChain;
+  append(propList?: any[], attributes?: Record<string, any>): SpawnChain {
+    if (attributes.length == undefined) {
+      this._buildList.push(this._create(propList, attributes));
     } else {
-      options.forEach((x) => {
-        this._buildList.push(this._create(x));
+      attributes.forEach((x) => {
+        this._buildList.push(this._create(propList, x));
       });
     }
     return this;
@@ -133,11 +140,13 @@ export class SpawnChain {
 }
 
 export class SpawnerStore {
-  state: any; // proxy
+  state: Record<string, any>; // proxy
   _state: any; // target
+  _parent: Spawner;
 
-  constructor(initialState: Record<string, any>) {
+  constructor(parent: Spawner, initialState: Record<string, any>) {
     this._state = {};
+    this._parent = parent;
 
     const state: ProxyConstructor = new Proxy(this._state, {
       get: this._proxyGetHandler,
@@ -155,14 +164,12 @@ export class SpawnerStore {
 
   _proxySetHandler = (obj, prop, value) => {
     obj[prop] = value;
-    console.log("LOL");
     // this._reRender();
     return true;
   };
 
   _proxyGetHandler(obj, prop) {
-    console.log("GET");
-    // return Object.entries(obj.states).find((x) => x[0] == prop);
+    return { [prop]: obj[prop] };
   }
 
   createState<T>(stateObj: Record<string, T>) {
@@ -178,6 +185,16 @@ export class SpawnerStore {
       );
     } else {
       this.state[key] = val;
+      console.log(this._parent._refStore);
+      this._parent._refStore.forEach((ref) => {
+        if (ref.stateName == key) {
+          ref.element[ref.attr] = Object.values(this.state[key])[0];
+        }
+      });
     }
+  }
+
+  snapshot() {
+    return this._state;
   }
 }
