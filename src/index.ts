@@ -1,9 +1,10 @@
 import { Spawner } from "./classes/spawner";
 
-const spawner = new Spawner(document.body);
+const spawner = new Spawner(document.getElementById("app"));
 
 const store = spawner.store({
   text: "hi!",
+  isVisible: false,
 });
 
 store.createState({ number: 0 });
@@ -12,12 +13,17 @@ const { state } = store;
 
 spawner
   .create([])
+  .append([state.isVisible], {
+    type: "div",
+    style: "border: 2px solid black;",
+    innerText: state.text,
+  })
   .append([], { type: "p", innerText: state.number })
   .append([], {
     innerText: "Click me",
     type: "button",
     onclick: () => {
-      store.setState({ text: "texty" });
+      store.setState({ text: "Changed" });
     },
   })
   .append([], { innerText: "I'm some boring text", type: "p" })
@@ -30,15 +36,18 @@ spawner
       }))
     )
   )
-  .renderAt(document.body);
+  .end();
 
 const cb = (state) => {
   return state + 1;
 };
 
-store.setState({ number: 1 });
 store.computeState(state.number, cb);
 
 setInterval(() => {
   store.computeState(state.number, cb);
 }, 1000);
+
+spawner._redraw();
+
+spawner.render();

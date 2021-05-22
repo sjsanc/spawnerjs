@@ -10,10 +10,10 @@ const spawner = new Spawner(document.body);
 
 // Start chaining elements
 spawner
-  .create([])
-  .append([], { type: "h1", classList: "bold", innerText: "My life for Aiur" })
-  .append([], { type: "p", innerText: "Jeffrey, we're leaving" });
-  .render();
+    .create([])
+    .append([], { type: "h1", classList: "bold", innerText: "My life for Aiur" })
+    .append([], { type: "p", innerText: "Jeffrey, we're leaving" });
+    .render();
 
 ```
 
@@ -50,10 +50,14 @@ spawner
   .create([], { type: "p", innerText: state.name })
   .append([], {
     type: "button",
-    innerText: "Click Me",
-    onclick: () => {
-      store.setState({ text: "I've been set up!" });
-    },
+    onclick: () => store.setState({ name: "Sarah Kerrigan" }),
   })
   .render();
+
+// Or compute it
+const cb = (state) => {
+  return state + 1;
+};
+
+store.computeState(state.number, cb);
 ```

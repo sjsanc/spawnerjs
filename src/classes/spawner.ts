@@ -1,8 +1,27 @@
+//  .d8888.d8888b. .d8b. db   d8b   dbd8b   dbd88888bd8888b.   d88b.d8888.
+//  88'  YP88  `8Dd8' `8b88   I8I   88888o  8888'    88  `8D   `8P'88'  YP
+//  `8bo.  88oodD'88ooo8888   I8I   8888V8o 8888ooooo88oobY'    88 `8bo.
+//    `Y8b.88~~~  88~~~88Y8   I8I   8888 V8o8888~~~~~88`8b      88   `Y8b.
+//  db   8D88     88   88`8b d8'8b d8'88  V88888.    88 `88.db. 88 db   8D
+//  `8888Y'88     YP   YP `8b8' `8d8' VP   V8PY88888P88   YDY8888P `8888Y'
+
+// NOTES
+// Conditional Rendering -- currently half-scaffolded.
+// Not sure if it's possible to do realistically without a Shadow DOM implementation
+// Current aim is to insert placeholder References where an element that has failed
+// it's condition should go, then insert/replace using the placeholder index on
+// condition update.
+
+// =============================================================================== //
+// Spawner
+// =============================================================================== //
+
 export class Spawner {
   _spawnerRootContext: HTMLElement;
   protected _spawnerRootBuildList: HTMLElement[];
   _rootEntry: HTMLElement;
   _refStore: Ref[];
+  _stateStore: SpawnerStore;
 
   constructor(rootEntry) {
     this._refStore = []; // array for storing existing referneces
@@ -13,18 +32,27 @@ export class Spawner {
 
   // SpawnStore intialiser
   store(initialState: Record<string, any>) {
-    return new SpawnerStore(this, initialState);
+    const store = new SpawnerStore(this, initialState);
+    this._stateStore = store;
+    return store;
   }
 
   // SpawnChain initiialiser, wraps the _create internal method
   create(props: any[]): SpawnChain;
-  create(props: any[], options?: Record<string, any>): SpawnChain;
-  create(props: any[], options?: Record<string, any>): SpawnChain {
-    if (options !== undefined) {
+  create(props: any[], attributes?: Record<string, any>): SpawnChain;
+  create(props: any[], attributes?: Record<string, any>): SpawnChain {
+    if (attributes == undefined) {
       return new SpawnChain(this, props, {}, this._rootEntry);
     } else {
-      return new SpawnChain(this, props, options, this._rootEntry);
+      return new SpawnChain(this, props, attributes, this._rootEntry);
     }
+  }
+
+  _redraw() {
+    console.log(this._spawnerRootBuildList);
+    console.log(this._refStore);
+    // this._rootEntry.innerText = "";
+    // this._build(this._spawnerRootBuildList, this._rootEntry);
   }
 
   // Saves the reference between a Store prop and DOM element
@@ -35,7 +63,9 @@ export class Spawner {
   // Builds the DOM and returns a root element
   _build(buildList: HTMLElement[], root: HTMLElement) {
     buildList.forEach((x) => {
-      root.append(x);
+      if (x.dataset.display !== "0") {
+        root.append(x);
+      }
     });
     return root;
   }
@@ -44,7 +74,15 @@ export class Spawner {
   _saveToRootBuildList(element: HTMLElement) {
     this._spawnerRootBuildList = [...this._spawnerRootBuildList, element];
   }
+
+  render() {
+    this._rootEntry.append(this._spawnerRootContext);
+  }
 }
+
+// =============================================================================== //
+// SpawnChain
+// =============================================================================== //
 
 export class SpawnChain {
   _parentSpawner: Spawner;
@@ -72,6 +110,7 @@ export class SpawnChain {
 
     let statefulAttributes: StatefulAttr[] = [];
 
+    // Build element and create any references between state and attributes
     for (let [key, val] of Object.entries(attributes)) {
       if (typeof val == "object") {
         const stateName = Object.keys(val)[0];
@@ -81,63 +120,79 @@ export class SpawnChain {
           attr: key,
           element: element,
         });
-        element[key] = Object.values(val)[0]; // build element
+        element[key] = Object.values(val)[0];
       } else {
         element[key] = val;
       }
     }
 
+    let checker = (arr) =>
+      arr.every((v) => this._parentSpawner._stateStore.getState(v) === true);
+
+    // Check that all conditions eval to true;
+    // if(checker(conditions) == false) {
+    //     element.dataset.display = "0"
+    // } else {
+
+    conditions.forEach((condition) => {
+      const stateName = Object.keys(condition)[0];
+      this._parentSpawner._saveRef({
+        stateName: stateName,
+        renderDependency: true,
+        element: element,
+      });
+    });
+
+    this._buildList.push(element); // save this particular element
     this._parentSpawner._saveToRootBuildList(element);
+
     return element;
   }
 
   // Appends an element into the SpawnChain buildlist
-  append(propList?: any[], attributes?: Record<string, any>): SpawnChain;
-  append(propList?: any[], attributes?: Record<string, any>[]): SpawnChain;
-  append(propList?: any[], attributes?: Record<string, any>): SpawnChain {
+  append(conditions?: any[], attributes?: Record<string, any>): SpawnChain;
+  append(conditions?: any[], attributes?: Record<string, any>[]): SpawnChain;
+  append(conditions?: any[], attributes?: Record<string, any>): SpawnChain {
     if (attributes.length == undefined) {
-      this._buildList.push(this._create(propList, attributes));
+      const element = this._create(conditions, attributes);
+
+      this._buildList.push(element);
+      this._rootContext.append(element);
     } else {
       attributes.forEach((x) => {
-        this._buildList.push(this._create(propList, x));
+        const element = this._create(conditions, x);
+
+        this._buildList.push(element);
+        this._rootContext.append(element);
       });
     }
     return this;
   }
 
-  // Compiles a buildList into a root element
-  _build(buildList: HTMLElement[], rootElement: HTMLElement) {
-    buildList.forEach((x) => {
-      rootElement.append(x);
-    });
-    return rootElement;
-  }
-
   // Takes a SpawnChain and joins it to the parent one
   nest(spawnChain: SpawnChain) {
-    this._buildList.push(
-      this._build(spawnChain._buildList, spawnChain._rootContext)
-    );
+    this._rootContext.append(spawnChain._rootContext);
+    this._buildList = [...this._buildList, ...spawnChain._buildList];
     return this;
   }
 
-  // Append the build SpawnChain at the passed argument
-  renderAt(insertionPoint: HTMLElement) {
-    const builtSpawnChain = this._build(this._buildList, this._rootContext);
-    insertionPoint.append(builtSpawnChain);
-  }
-
-  // Append the built SpawnChain at the defined Spawner rootInsertion
-  render() {
-    const builtSpawnChain = this._build(this._buildList, this._rootContext);
-    this._rootInsertion.append(builtSpawnChain);
+  end() {
+    if (this._parentSpawner._spawnerRootContext == null) {
+      this._parentSpawner._spawnerRootContext = this._rootContext;
+    } else {
+      this._parentSpawner._spawnerRootContext.append(this._rootContext);
+    }
   }
 
   // Return the built SpawnChain
   return(): HTMLElement {
-    return this._build(this._buildList, this._rootContext);
+    return this._parentSpawner._build(this._buildList, this._rootContext);
   }
 }
+
+// =============================================================================== //
+// SpawnerStore
+// =============================================================================== //
 
 export class SpawnerStore {
   state: Record<string, any>; // proxy

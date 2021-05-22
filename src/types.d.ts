@@ -1,7 +1,8 @@
 interface Ref {
   stateName: string;
-  attr: string;
+  attr?: string;
   element: HTMLElement;
+  renderDependency?: boolean;
 }
 
 interface StatefulAttr {
