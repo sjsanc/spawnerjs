@@ -6,13 +6,13 @@ const store = spawner.store({
   text: "hi!",
 });
 
-store.createState({ name: "sjsanc" });
+store.createState({ number: 0 });
 
 const { state } = store;
 
 spawner
   .create([])
-  .append([], { type: "p", innerText: state.text })
+  .append([], { type: "p", innerText: state.number })
   .append([], {
     innerText: "Click me",
     type: "button",
@@ -32,4 +32,13 @@ spawner
   )
   .renderAt(document.body);
 
-console.log(store.snapshot());
+const cb = (state) => {
+  return state + 1;
+};
+
+store.setState({ number: 1 });
+store.computeState(state.number, cb);
+
+setInterval(() => {
+  store.computeState(state.number, cb);
+}, 1000);

@@ -7,3 +7,7 @@ interface Ref {
 interface StatefulAttr {
   [x: string]: string;
 }
+
+type StateObj = {
+  [key: string]: Record<string, any>;
+};

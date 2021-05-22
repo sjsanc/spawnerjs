@@ -168,7 +168,7 @@ export class SpawnerStore {
     return true;
   };
 
-  _proxyGetHandler(obj, prop) {
+  _proxyGetHandler(obj, prop, receiver) {
     return { [prop]: obj[prop] };
   }
 
@@ -179,19 +179,39 @@ export class SpawnerStore {
 
   setState<T>(stateObj: Record<string, T>) {
     const [key, val] = Object.entries(stateObj)[0];
+
     if (key == undefined) {
       throw ReferenceError(
         `Could not find state with key '${key}'. Check for typos.`
       );
     } else {
-      this.state[key] = val;
-      console.log(this._parent._refStore);
-      this._parent._refStore.forEach((ref) => {
-        if (ref.stateName == key) {
-          ref.element[ref.attr] = Object.values(this.state[key])[0];
+      const currentVal = Object.values(this.state[key])[0];
+
+      if (typeof val !== "object") {
+        if (typeof currentVal !== typeof val) {
+          throw new TypeError(
+            `Cannot assign variable of type '${typeof val}' to state container of type '${typeof currentVal}'. State type cannot be mutated after initialising.`
+          );
+        } else {
+          this.state[key] = val;
+          this._parent._refStore.forEach((ref) => {
+            if (ref.stateName == key) {
+              ref.element[ref.attr] = Object.values(this.state[key])[0];
+            }
+          });
         }
-      });
+      }
     }
+  }
+
+  computeState(stateObj, callback) {
+    const [key, val] = Object.entries(stateObj)[0];
+    this.setState({ [key]: callback(val) });
+  }
+
+  getState<T>(stateObj: Record<string, T>): T {
+    const [key, val] = Object.entries(stateObj)[0];
+    return val;
   }
 
   snapshot() {
